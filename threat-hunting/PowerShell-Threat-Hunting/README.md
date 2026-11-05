@@ -20,7 +20,7 @@ Two controlled hunting scenarios were performed to understand how PowerShell act
 - Identify download-related PowerShell commands.
 - Investigate script-block activity using Event ID 4104.
 - Verify downloaded file creation.
-- Review possible false positives and investigation requirements.
+
 
 ## Tools and Telemetry
 
@@ -147,8 +147,9 @@ Validate the parent process, user, decoded command, and surrounding activity.
 
 Potential mapping based on the observed PowerShell execution behavior.
 
-## 11. Conclusion
+## 10. Conclusion
+In this hunt, we performed controlled PowerShell execution using an encoded command and investigated the resulting activity through Windows PowerShell and Windows Event Viewer.
 
-The controlled test demonstrated how Windows Security Event ID 4688 can identify PowerShell execution with encoded command-line arguments.
+We used PowerShell to generate and execute a Base64-encoded command, then examined Windows Security Event ID 4688 to identify the newly created PowerShell process and its command-line arguments.
 
-Further investigation of decoded commands and surrounding activity is required before determining whether an event is malicious.
+This practical exercise helped us understand how SOC analysts can use PowerShell for threat hunting and Windows Event Viewer for validating process execution activity. It also demonstrated how encoded PowerShell commands can be identified and investigated as potential security indicators.
