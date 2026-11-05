@@ -119,11 +119,6 @@ The presence of an encoded command is a hunting indicator, not proof of maliciou
 - Retrieved Windows Security Event ID 4688.
 - Observed the PowerShell executable and encoded command-line arguments in the event.
 
-### Screenshot Evidence
-
-![Encoded command generation](Evidence/Hunt-01/01-Encoded-Command-Generation.png)
-
-![Event ID 4688 evidence](Evidence/Hunt-01/02-Event-ID-4688.png)
 
 ## 7. Investigation Steps
 
@@ -151,16 +146,6 @@ Validate the parent process, user, decoded command, and surrounding activity.
 **T1059.001 — PowerShell**
 
 Potential mapping based on the observed PowerShell execution behavior.
-
-## 10. Status
-
-| Activity | Status |
-|---|---|
-| Generate encoded test command | Completed |
-| Execute encoded PowerShell | Completed |
-| Identify Event ID 4688 | Completed |
-| Review command-line arguments | Completed |
-| Splunk validation | Pending |
 
 ## 11. Conclusion
 
