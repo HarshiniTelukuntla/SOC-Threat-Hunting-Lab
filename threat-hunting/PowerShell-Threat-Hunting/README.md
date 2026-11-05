@@ -1,141 +1,169 @@
-# Lab 3: PowerShell Download Detection
+# PowerShell Threat Detection
 
-## 1. Objective
+## Overview
 
-Detect and investigate PowerShell activity associated with downloading content from external URLs. Identify potentially suspicious commands, validate the resulting file activity, and distinguish legitimate administrative activity from potentially malicious behavior.
+This project focuses on identifying suspicious PowerShell execution patterns through Windows event logs and endpoint telemetry.
 
-## 2. Lab Environment
+Two controlled hunting scenarios were performed to understand how PowerShell activity can be detected and investigated.
+
+## Detection Scenarios
+
+### Hunt 1: Encoded PowerShell Command Detection
+
+- Identify PowerShell processes using `-EncodedCommand`.
+- Investigate process creation through Windows Security Event ID 4688.
+- Examine command-line arguments and process context.
+- Understand potential misuse of encoded PowerShell commands.
+
+### Hunt 2: PowerShell Download Activity Detection
+
+- Identify download-related PowerShell commands.
+- Investigate script-block activity using Event ID 4104.
+- Verify downloaded file creation.
+- Review possible false positives and investigation requirements.
+
+## Tools and Telemetry
 
 | Component | Purpose |
 |---|---|
-| Windows 11 VM | Investigation environment |
-| Windows PowerShell | Command execution and hunting |
-| Windows Event Viewer | Event investigation |
-| PowerShell Operational Log | Script-block telemetry |
-| Windows Security Log | Process creation telemetry |
-| Sysmon | Process and network telemetry |
+| Windows PowerShell | Controlled test execution |
+| Windows Security Event ID 4688 | Process creation |
+| PowerShell Event ID 4104 | Script-block logging |
+| Sysmon | Additional endpoint telemetry |
 | Splunk Universal Forwarder | Log collection |
 
-## 3. Data Sources
 
-### Event ID 4104 — PowerShell Script Block Logging
+## Important Note
 
-Used to investigate PowerShell script content, including commands that may involve downloading files or accessing external URLs.
+The activities performed were controlled and harmless tests. The observed command execution does not independently establish malicious activity.
 
-### Event ID 4688 — Process Creation
 
-Used to identify newly created processes, their parent processes, and available command-line information.
+# Hunt 1: Encoded PowerShell Detection
 
-### Sysmon Event ID 3 — Network Connection
+## 1. Objective
 
-Intended to correlate process activity with network connections. A matching network event for the test download has not yet been confirmed.
+Detect PowerShell execution involving the `-EncodedCommand` parameter and investigate the process using Windows Security Event ID 4688.
 
-## 4. Detection Indicators
+## 2. Test Activity
 
-The following command patterns are useful hunting indicators:
-
-- `Invoke-WebRequest`
-- `Invoke-RestMethod`
-- `DownloadString`
-- `DownloadFile`
-- `Start-BitsTransfer`
-- `curl.exe`
-- `wget`
-
-These indicators are not inherently malicious. Their presence should trigger investigation and contextual validation rather than an automatic malicious verdict.
-
-## 5. Test Activity Performed
-
-A controlled download test was performed using PowerShell:
+A harmless PowerShell command was created:
 
 ```powershell
-$testFile = Join-Path $env:TEMP 'SOC-Download-Hunt-Test.html'
-
-Invoke-WebRequest -Uri 'https://example.com' -OutFile $testFile
-
-Get-Item $testFile | Select-Object FullName, Length, LastWriteTime
+$testCommand = "Write-Output 'SOC-ENCODED-HUNT-TEST'"
 ```
 
-### Test results
-
-- The web request command was executed.
-- The output file was created in the user's temporary directory.
-- The file's full path, length, and last-write time were displayed.
-- PowerShell Event ID 4104 contained records associated with the test commands.
-- Splunk-related PowerShell activity was also present in the investigation data and must be distinguished from the test activity.
-
-## 6. Hunting Logic
-
-Search PowerShell Event ID 4104 for download-related indicators.
+The command was converted into Base64:
 
 ```powershell
-$since = (Get-Date).AddHours(-2)
+$bytes = [System.Text.Encoding]::Unicode.GetBytes($testCommand)
+$encoded = [Convert]::ToBase64String($bytes)
+
+"Encoded test: $encoded"
+```
+
+The encoded command was executed:
+
+```powershell
+Start-Process powershell.exe -Wait -ArgumentList @(
+    '-NoProfile',
+    '-EncodedCommand',
+    $encoded
+)
+```
+
+## 3. Data Source
+
+**Windows Security Event ID 4688 — Process Creation**
+
+Relevant fields:
+
+- New Process Name
+- New Process ID
+- Creator Process Name
+- Creator Process ID
+- Process Command Line
+- Account Name
+- Logon ID
+
+## 4. Hunting Query
+
+```powershell
+$since = (Get-Date).AddMinutes(-10)
 
 Get-WinEvent -FilterHashtable @{
-    LogName   = 'Microsoft-Windows-PowerShell/Operational'
-    Id        = 4104
+    LogName   = 'Security'
+    Id        = 4688
     StartTime = $since
 } -ErrorAction SilentlyContinue |
 Where-Object {
-    $_.Message -match '(?i)Invoke-WebRequest|DownloadString|DownloadFile|Start-BitsTransfer|Invoke-RestMethod|curl\.exe|wget'
+    $_.Message -match '(?i)-EncodedCommand'
 } |
 Select-Object TimeCreated, RecordId, Message |
 Format-List
 ```
 
-### Logic explanation
+## 5. Detection Logic
 
-1. Retrieve PowerShell script-block events from the last two hours.
-2. Filter for common download-related commands and indicators.
-3. Display the timestamp, event record ID, and event message.
-4. Investigate the command, user, parent process, destination URL, and resulting file where available.
-5. Correlate the activity with process-creation and network telemetry when possible.
+Identify process creation events where:
 
+- The new process is `powershell.exe` or `pwsh.exe`.
+- The command line contains `-EncodedCommand` or its supported abbreviation.
+- The execution context and parent process require investigation.
 
-## 7. Investigation Workflow
+The presence of an encoded command is a hunting indicator, not proof of malicious activity.
 
-When a download-related indicator is found:
+## 6. Evidence Collected
 
-1. Identify the user and process involved.
-2. Examine the complete PowerShell command and its arguments.
-3. Identify the URL or remote destination, if recorded.
-4. Determine whether a file was created and inspect its path, size, and timestamp.
-5. Review process-creation telemetry, including Event ID 4688.
-6. Correlate with Sysmon Event ID 3 or other available network telemetry.
-7. Check whether the activity aligns with an approved administrative task.
-8. Record the findings and determine whether escalation is warranted.
+- Generated a harmless Base64-encoded PowerShell command.
+- Executed PowerShell using `-EncodedCommand`.
+- Retrieved Windows Security Event ID 4688.
+- Observed the PowerShell executable and encoded command-line arguments in the event.
 
-## 8. False-Positive Considerations
+### Screenshot Evidence
 
-Legitimate activities can produce the same indicators, including:
+![Encoded command generation](Evidence/Hunt-01/01-Encoded-Command-Generation.png)
 
-- Software downloads and updates.
-- Administrator troubleshooting.
-- Approved automation scripts.
-- Application installation and configuration.
-- Security-tool and monitoring-agent operations.
+![Event ID 4688 evidence](Evidence/Hunt-01/02-Event-ID-4688.png)
 
-Splunk Universal Forwarder activity was observed during this lab. Such activity should be evaluated using its process path, parent process, command line, and context rather than excluded solely because it contains the word `Splunk`.
+## 7. Investigation Steps
 
-## 9. Evidence and Limitations
+1. Identify the account that executed PowerShell.
+2. Review the parent and child process information.
+3. Examine the complete command line.
+4. Decode the Base64 content using the appropriate encoding.
+5. Inspect the decoded command for suspicious operations.
+6. Correlate with Event ID 4104 and other endpoint telemetry when available.
 
-### Confirmed observations
+## 8. False Positives
 
-- PowerShell download-related test commands were executed.
-- Event ID 4104 records associated with the test commands were found.
-- A temporary HTML file was created successfully.
-- Security Event ID 4688 previously showed PowerShell launching an encoded PowerShell command during a separate controlled test.
+Legitimate applications and administrators may use encoded PowerShell commands for:
 
+- Software deployment.
+- Administrative automation.
+- Configuration management.
+- Application installation.
+- Monitoring operations.
 
-## 10. MITRE ATT&CK Mapping
+Validate the parent process, user, decoded command, and surrounding activity.
 
-**Potential mapping:** [T1059.001 — PowerShell](https://attack.mitre.org/techniques/T1059/001/)
+## 9. MITRE ATT&CK
 
-PowerShell is frequently used for legitimate administration and can also be abused by adversaries. Map the observed behavior to this technique when the evidence supports the association.
+**T1059.001 — PowerShell**
 
+Potential mapping based on the observed PowerShell execution behavior.
 
+## 10. Status
+
+| Activity | Status |
+|---|---|
+| Generate encoded test command | Completed |
+| Execute encoded PowerShell | Completed |
+| Identify Event ID 4688 | Completed |
+| Review command-line arguments | Completed |
+| Splunk validation | Pending |
 
 ## 11. Conclusion
 
-This lab demonstrates how PowerShell script-block logging can support hunting for download-related behavior. The investigation identified the controlled test commands and confirmed output-file creation.
+The controlled test demonstrated how Windows Security Event ID 4688 can identify PowerShell execution with encoded command-line arguments.
 
+Further investigation of decoded commands and surrounding activity is required before determining whether an event is malicious.
