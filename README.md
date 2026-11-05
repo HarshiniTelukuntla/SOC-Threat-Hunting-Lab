@@ -1,5 +1,5 @@
 # SOC-Threat-Hunting-Lab
-# SOC Threat Hunting Lab
+
 
 ## About This Repository
 
