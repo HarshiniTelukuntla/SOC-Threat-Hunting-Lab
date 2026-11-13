@@ -58,8 +58,12 @@ Registry path:
 HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 ```
 <img width="1024" height="768" alt="Screenshot (517)" src="https://github.com/user-attachments/assets/0f94dbcd-e1a4-489e-b44b-387d2ad1be57" />
+<img width="1024" height="768" alt="Screenshot (520)" src="https://github.com/user-attachments/assets/b24142a4-b462-42f0-a502-9b17bbe8f81d" />
+
 
 This registry location stores application entries configured to launch automatically when the current user signs in.
+
+We can also cross check whether the new item i.e SOC Lab 5 have been created using Event viewer as per above screenshots
 
 ## 4. Command Explanation
 
