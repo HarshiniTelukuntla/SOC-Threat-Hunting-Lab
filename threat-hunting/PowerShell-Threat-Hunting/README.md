@@ -70,16 +70,8 @@ This registry location stores application entries configured to launch automatic
 - `Software\Microsoft\Windows\CurrentVersion\Run` contains startup entries for the current user.
 - Applications configured in this location can automatically launch during user logon.
 
-## 5. Initial Findings
 
-The registry inspection identified existing startup entries associated with:
-
-- Microsoft OneDrive.
-- Microsoft Edge.
-
-These were observed as existing startup configurations. Their presence alone does not indicate malicious activity.
-
-## 6. Controlled Persistence Simulation
+## 5. Controlled Persistence Simulation
 
 To understand Registry Run Key persistence, a safe Notepad application was used for testing.
 
@@ -91,7 +83,7 @@ Activities performed:
 4. Shut down and restarted the system.
 5. Verified that Notepad opened automatically after the system restarted and the user logged in.
 
-## 7. Detection and Investigation
+## 6. Detection and Investigation
 
 A SOC analyst should investigate:
 
@@ -102,7 +94,7 @@ A SOC analyst should investigate:
 5. Whether the application contains suspicious execution arguments.
 6. Whether the startup behavior is associated with an authorized user or application.
 
-## 8. Conclusion
+## 7. Conclusion
 
 This investigation demonstrated how Windows Registry Run Keys can be used to establish persistence. A controlled Notepad startup entry was created and successfully validated after a system restart, demonstrating automatic application execution during user logon.
 
