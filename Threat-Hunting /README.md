@@ -1,238 +1,155 @@
-# Windows Persistence Mechanisms and Threat Hunting
+# PowerShell Threat Detection
 
 ## Overview
 
-This project focuses on identifying and investigating Windows persistence mechanisms that allow applications to execute automatically during system startup or user logon.
+This project focuses on identifying suspicious PowerShell execution patterns through Windows event logs and endpoint telemetry.
 
-Two controlled persistence scenarios were performed using Windows Registry Run Keys and Scheduled Tasks. A safe Notepad application was configured to execute automatically, and its execution was validated after restarting the system.
-
-The objective was to understand how legitimate Windows mechanisms can be abused by attackers to maintain persistence and how SOC analysts can investigate such activities.
+Two controlled hunting scenarios were performed to understand how PowerShell activity can be detected and investigated.
 
 ## Detection Scenarios
 
-### Hunt 1: Registry Run Key Persistence
+### Hunt 1: Encoded PowerShell Command Detection
 
-- Inspected Windows Registry Run Keys to identify existing startup applications.
-- Examined application paths and startup configurations.
-- Created a controlled persistence entry using the safe Notepad application.
-- Successfully executed Notepad through the configured startup mechanism.
-- Restarted the system and verified that Notepad opened automatically.
+- Identify PowerShell processes using `-EncodedCommand`.
+- Investigate process creation through Windows Security Event ID 4688.
+- Examine command-line arguments and process context.
+- Understand potential misuse of encoded PowerShell commands.
 
-### Hunt 2: Scheduled Task Persistence
+### Hunt 2: PowerShell Download Activity Detection
 
-- Investigated Windows Scheduled Tasks and their execution mechanisms.
-- Created a scheduled task configured to launch the safe Notepad application.
-- Successfully executed Notepad through the scheduled task.
-- Restarted the system and verified the automatic execution behavior.
-- Understood how scheduled tasks can be abused to maintain persistence.
+- Identify download-related PowerShell commands.
+- Investigate script-block activity using Event ID 4104.
+- Verify downloaded file creation.
+
 
 ## Tools and Telemetry
 
 | Component | Purpose |
 |---|---|
-| Windows PowerShell | Registry inspection and scheduled task investigation |
-| Windows Registry | Configure and investigate startup persistence |
-| Windows Task Scheduler | Create and investigate scheduled task persistence |
-| Windows Notepad | Safe application used for persistence simulation |
-| Windows Event Viewer | Investigate relevant Windows events |
+| Windows PowerShell | Controlled test execution |
+| Windows Security Event ID 4688 | Process creation |
+| PowerShell Event ID 4104 | Script-block logging |
 | Sysmon | Additional endpoint telemetry |
+| Splunk Universal Forwarder | Log collection |
 
-# Hunt 1: Registry Run Key Persistence
+
+## Important Note
+
+The activities performed were controlled and harmless tests. The observed command execution does not independently establish malicious activity.
+
+
+# Hunt 1: Encoded PowerShell Detection
 
 ## 1. Objective
 
-Identify applications configured to execute automatically during user logon and understand how Registry Run Keys can be used to establish persistence.
+Detect PowerShell execution involving the `-EncodedCommand` parameter and investigate the process using Windows Security Event ID 4688.
 
-## 2. Initial Investigation
+## 2. Test Activity
 
-Inspected the current user's Windows Registry Run Key to identify existing startup applications.
+A harmless PowerShell command was created:
 
 ```powershell
-Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$testCommand = "Write-Output 'SOC-ENCODED-HUNT-TEST'"
+```
+
+The command was converted into Base64:
+
+```powershell
+$bytes = [System.Text.Encoding]::Unicode.GetBytes($testCommand)
+$encoded = [Convert]::ToBase64String($bytes)
+
+"Encoded test: $encoded"
+```
+
+The encoded command was executed:
+
+```powershell
+Start-Process powershell.exe -Wait -ArgumentList @(
+    '-NoProfile',
+    '-EncodedCommand',
+    $encoded
+)
 ```
 
 ## 3. Data Source
 
-**Windows Registry – Current User Run Key**
+**Windows Security Event ID 4688 — Process Creation**
 
-Registry path:
+Relevant fields:
 
-```text
-HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
-```
+- New Process Name
+- New Process ID
+- Creator Process Name
+- Creator Process ID
+- Process Command Line
+- Account Name
+- Logon ID
 
-This registry location stores application entries configured to launch automatically when the current user signs in.
-
-## 4. Command Explanation
-
-- `Get-ItemProperty` retrieves values stored in a registry key.
-- `HKCU` represents `HKEY_CURRENT_USER`.
-- `Software\Microsoft\Windows\CurrentVersion\Run` contains startup entries for the current user.
-- Applications configured in this location can automatically launch during user logon.
-
-
-## 5. Controlled Persistence Simulation
-
-To understand Registry Run Key persistence, a safe Notepad application was used for testing.
-
-Activities performed:
-
-1. Created a controlled Registry Run Key entry for Notepad.
-2. Configured the application to execute automatically during user logon.
-3. Successfully executed Notepad using the configured startup mechanism.
-4. Shut down and restarted the system.
-5. Verified that Notepad opened automatically after the system restarted and the user logged in.
-
-## 6. Detection and Investigation
-
-A SOC analyst should investigate:
-
-1. Whether the registry entry is expected.
-2. Whether the executable path is legitimate.
-3. Whether the file is digitally signed.
-4. Whether the registry entry was recently created or modified.
-5. Whether the application contains suspicious execution arguments.
-6. Whether the startup behavior is associated with an authorized user or application.
-
-## 7. Conclusion
-
-This investigation demonstrated how Windows Registry Run Keys can be used to establish persistence. A controlled Notepad startup entry was created and successfully validated after a system restart, demonstrating automatic application execution during user logon.
-
-# Hunt 2: Scheduled Task Persistence
-
-## 1. Objective
-
-Understand how Windows Scheduled Tasks can be configured to execute applications automatically based on predefined triggers and how attackers can abuse this mechanism to maintain persistence.
-
-## 2. Controlled Persistence Simulation
-
-A safe Notepad application was used to simulate scheduled task-based persistence.
-
-Activities performed:
-
-1. Created a scheduled task configured to launch Notepad.
-2. Configured the task with the required execution trigger.
-3. Successfully executed Notepad through the scheduled task.
-4. Shut down and restarted the system.
-5. Verified the automatic execution behavior after restarting the system.
-
-## 3. Data Source
-
-**Windows Task Scheduler**
-
-Relevant task information includes:
-
-- Task Name
-- Task Path
-- Task State
-- Executable Path
-- Command-line Arguments
-- Configured Triggers
-- Execution Conditions
-
-## 4. Hunting Commands
-
-### Command 1: List Scheduled Tasks
+## 4. Hunting Query
 
 ```powershell
-Get-ScheduledTask |
-Select-Object TaskName, TaskPath, State
+$since = (Get-Date).AddMinutes(-10)
+
+Get-WinEvent -FilterHashtable @{
+    LogName   = 'Security'
+    Id        = 4688
+    StartTime = $since
+} -ErrorAction SilentlyContinue |
+Where-Object {
+    $_.Message -match '(?i)-EncodedCommand'
+} |
+Select-Object TimeCreated, RecordId, Message |
+Format-List
 ```
-
-**Command Explanation**
-
-- `Get-ScheduledTask` retrieves scheduled tasks configured on the system.
-- `TaskName` displays the task name.
-- `TaskPath` displays the task folder location.
-- `State` displays the current task state.
-
-### Command 2: Examine Scheduled Task Actions
-
-```powershell
-Get-ScheduledTask | ForEach-Object {
-    $task = $_
-
-    foreach ($action in $task.Actions) {
-        [PSCustomObject]@{
-            TaskName  = $task.TaskName
-            TaskPath  = $task.TaskPath
-            Execute   = $action.Execute
-            Arguments = $action.Arguments
-        }
-    }
-} | Format-Table -AutoSize
-```
-
-**Command Explanation**
-
-- Retrieves scheduled tasks from Windows.
-- Iterates through each task and its configured actions.
-- Extracts the executable associated with each task.
-- Displays command-line arguments used during execution.
-- Helps identify tasks launching PowerShell, CMD, scripts, or unfamiliar executables.
 
 ## 5. Detection Logic
 
-Investigate scheduled tasks that exhibit potentially suspicious characteristics:
+Identify process creation events where:
 
-- Tasks with unfamiliar names.
-- Executables running from Temp or AppData directories.
-- Tasks launching PowerShell or CMD with suspicious arguments.
-- Tasks configured to execute during startup or user logon.
-- Unexpected task creation or modification.
+- The new process is `powershell.exe` or `pwsh.exe`.
+- The command line contains `-EncodedCommand` or its supported abbreviation.
+- The execution context and parent process require investigation.
 
-## 6. SOC Investigation
+The presence of an encoded command is a hunting indicator, not proof of malicious activity.
 
-1. Identify unfamiliar scheduled tasks.
-2. Examine task actions and executable paths.
-3. Review configured triggers and execution conditions.
-4. Validate the executable and its digital signature.
-5. Identify the account associated with task execution.
-6. Correlate task activity with available Windows event logs.
+## 6. Evidence Collected
 
-## 7. Conclusion
+- Generated a harmless Base64-encoded PowerShell command.
+- Executed PowerShell using `-EncodedCommand`.
+- Retrieved Windows Security Event ID 4688.
+- Observed the PowerShell executable and encoded command-line arguments in the event.
 
-The scheduled task simulation demonstrated how Windows Task Scheduler can be used to execute applications automatically based on configured triggers. A safe Notepad application was used to understand and validate this persistence behavior.
 
-# Persistence Detection and Analysis
+## 7. Investigation Steps
 
-## 1. Objective
+1. Identify the account that executed PowerShell.
+2. Review the parent and child process information.
+3. Examine the complete command line.
+4. Decode the Base64 content using the appropriate encoding.
+5. Inspect the decoded command for suspicious operations.
+6. Correlate with Event ID 4104 and other endpoint telemetry when available.
 
-Understand how different Windows persistence mechanisms can be investigated and correlated to identify potentially suspicious startup activity.
+## 8. False Positives
 
-## 2. Investigation Areas
+Legitimate applications and administrators may use encoded PowerShell commands for:
 
-| Investigation | What We Examine | Potential Indicator |
-|---|---|---|
-| Registry Run Keys | Startup registry entries | Unknown executable or suspicious path |
-| Scheduled Tasks | Task triggers and actions | Unexpected script or executable |
+- Software deployment.
+- Administrative automation.
+- Configuration management.
+- Application installation.
+- Monitoring operations.
 
-## 3. SOC Investigation Workflow
+Validate the parent process, user, decoded command, and surrounding activity.
 
-1. Identify an unfamiliar startup registry entry or scheduled task.
-2. Examine its executable path.
-3. Validate the file, publisher, and digital signature.
-4. Review execution arguments and associated user account.
-5. Check relevant creation or modification timestamps.
-6. Correlate available Windows logs and endpoint telemetry.
-7. Determine whether the activity is legitimate, suspicious, or confirmed malicious.
+## 9. MITRE ATT&CK
 
-## 4. Important Event IDs for Investigation
+**T1059.001 — PowerShell**
 
-| Event ID | Log Source | Investigation Purpose |
-|---|---|---|
-| 4657 | Windows Security | Registry value modification, when appropriate auditing is enabled |
-| 106 | Task Scheduler Operational | Scheduled task registration |
-| 110 | Task Scheduler Operational | Scheduled task triggered |
+Potential mapping based on the observed PowerShell execution behavior.
 
-Event availability depends on the configured logging and auditing policies.
+## 10. Conclusion
+In this hunt, we performed controlled PowerShell execution using an encoded command and investigated the resulting activity through Windows PowerShell and Windows Event Viewer.
 
-## 5. Conclusion
+We used PowerShell to generate and execute a Base64-encoded command, then examined Windows Security Event ID 4688 to identify the newly created PowerShell process and its command-line arguments.
 
-This lab provided hands-on experience investigating and simulating two Windows persistence mechanisms: Registry Run Keys and Scheduled Tasks.
-
-Initially, existing Registry Run Key entries associated with OneDrive and Microsoft Edge were inspected. Subsequently, a safe Notepad application was configured through the Registry Run Key mechanism, successfully executed, and verified to open automatically after restarting the system.
-
-The same controlled simulation was performed using Windows Task Scheduler to understand scheduled task-based persistence and automatic application execution.
-
-These exercises helped demonstrate how legitimate Windows features can be abused to maintain persistence and how SOC analysts can investigate startup entries, scheduled tasks, executable paths, and related Windows event logs to identify potential persistence indicators.
+This practical exercise helped us understand how SOC analysts can use PowerShell for threat hunting and Windows Event Viewer for validating process execution activity. It also demonstrated how encoded PowerShell commands can be identified and investigated as potential security indicators.
