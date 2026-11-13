@@ -57,6 +57,7 @@ Registry path:
 ```text
 HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 ```
+<img width="1024" height="768" alt="Screenshot (517)" src="https://github.com/user-attachments/assets/0f94dbcd-e1a4-489e-b44b-387d2ad1be57" />
 
 This registry location stores application entries configured to launch automatically when the current user signs in.
 
@@ -67,16 +68,8 @@ This registry location stores application entries configured to launch automatic
 - `Software\Microsoft\Windows\CurrentVersion\Run` contains startup entries for the current user.
 - These entries can automatically launch applications during user logon.
 
-## 5. Findings
 
-The registry inspection identified existing startup entries associated with:
-
-- Microsoft OneDrive.
-- Microsoft Edge.
-
-These entries were identified as existing startup configurations. Their presence alone does not indicate malicious activity.
-
-## 6. SOC Investigation
+## 5. SOC Investigation
 
 A SOC analyst should examine:
 
@@ -86,11 +79,11 @@ A SOC analyst should examine:
 4. Whether the registry entry was recently created or modified.
 5. Whether the application contains suspicious execution arguments.
 
-## 7. Investigation Considerations
+## 6. Investigation Considerations
 
 Unknown executables, unusual file paths, suspicious command-line arguments, and unexpected registry modifications should be investigated further.
 
-## 8. Conclusion
+## 7. Conclusion
 
 The registry investigation provided practical experience identifying applications configured for automatic execution during user logon. It also demonstrated how SOC analysts can inspect startup entries to identify potential persistence indicators.
 
