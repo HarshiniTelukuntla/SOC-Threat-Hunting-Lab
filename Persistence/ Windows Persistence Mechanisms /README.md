@@ -58,7 +58,7 @@ Registry path:
 HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 ```
 <img width="1024" height="768" alt="Screenshot (517)" src="https://github.com/user-attachments/assets/0f94dbcd-e1a4-489e-b44b-387d2ad1be57" />
-<img width="1024" height="768" alt="image" src="https://github.com/user-attachments/assets/b931344e-0996-4223-92df-ae0564b3b1d3" />
+
 
 
 
