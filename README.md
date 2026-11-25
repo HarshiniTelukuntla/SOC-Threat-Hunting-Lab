@@ -1,81 +1,69 @@
-# SOC-Threat-Hunting-Lab
+🕵️ SOC Threat Hunting Lab
+I break into my own Windows machine, then hunt myself down.
 
+Every attack leaves footprints. This lab is my training ground for learning to read them.
 
-## About This Repository
+🎬 The Story
 
-Welcome to my **SOC Threat Hunting Lab**!
+Imagine a quiet Windows 11 laptop living inside a virtual box. Nothing looks wrong.
 
-This repository documents my hands-on cybersecurity learning and practical investigations focused on Security Operations Center (SOC), Threat Hunting, Incident Investigation, and Detection Engineering.
+Then I play the villain: I run a sneaky PowerShell command, drop a file from the internet, and plant a little something so it survives a reboot. A moment later I put on the detective's coat and ask the questions a SOC analyst would ask:
 
-The objective is to simulate security-related activities in a controlled Windows environment, investigate the generated telemetry, identify suspicious behavior, and develop detection logic using different security tools.
+Who ran that?
+What did they run?
+Where did it come from?
+Would my tools have caught it?
 
-## Objectives
+That cat-and-mouse loop, attacker first and defender second, is this whole repository.
 
-- Develop practical threat hunting and investigation skills.
-- Understand Windows security events and endpoint telemetry.
-- Investigate suspicious processes, commands, and system activities.
-- Learn attacker techniques using the MITRE ATT&CK framework.
-- Create and validate detection logic.
-- Improve incident analysis and response capabilities.
-- Document practical findings with screenshots and investigation reports.
+🧰 The Toolkit
+🔧 Tool	🎭 Role in the story
+Windows 11 + VirtualBox	The crime scene: a safe sandbox where nothing real is at risk
+PowerShell	The attacker's weapon of choice
+Sysmon	The hidden camera that records every process
+Windows Event Viewer	The detective's notebook of raw evidence
+Splunk	The big evidence board where clues get connected
+Wireshark (coming soon)	The wiretap for catching network traffic
+🔍 Case Files
+📁 Case #1: The Disguised PowerShell
 
-## Lab Environment
+Attackers love hiding commands in plain sight, so I did the same.
 
-| Component | Technology |
-|---|---|
-| Operating System | Windows 11 |
-| Virtualization | Oracle VirtualBox |
-| Scripting | PowerShell |
-| Endpoint Monitoring | Sysmon |
-| Log Investigation | Windows Event Viewer |
-| SIEM | Splunk |
-| Network Analysis | Wireshark (planned) |
+I ran encoded PowerShell commands and a download, then tracked the trail through the logs:
 
-## Repository Structure
+🕳️ Unmasked an encoded command to see what it was really doing
+🌐 Caught the download activity red-handed
+📜 Read the story told by Event ID 4688 (process creation) and Event ID 4104 (PowerShell script block logging)
+✅ Confirmed the downloaded file actually landed on disk
+📁 Case #2: The Uninvited Guest Who Won't Leave (in progress 🚧)
 
-```text
+Getting in is only half of an attack. Staying in is the other half.
+
+Persistence is how an intruder makes sure a reboot doesn't evict them. I'm hunting the three favorite hiding spots:
+
+🗝️ Registry Run Keys: programs that quietly start with Windows
+⏰ Scheduled Tasks: sleeper agents with a timer
+⚙️ Windows Services: backdoors dressed up as legitimate software
+🧭 How I Run Every Investigation
+📖 Study the trick: learn the attacker technique (with MITRE ATT&CK as my map)
+🧪 Recreate it: generate controlled test activity
+📡 Collect the clues: gather endpoint and system telemetry
+🔎 Investigate: dig through events and validate what is suspicious
+🛡️ Write the trap: build detection logic that would catch it next time
+📝 Tell the story: document everything with screenshots and findings
+🗂️ What's Inside
 SOC-Threat-Hunting-Lab/
-│
-├── threat-hunting/
-│   └── Practical threat hunting investigations
-│
+├── Threat-Hunting/   → Case #1 and other investigations
+├── Persistence/      → Case #2: hiding spots that survive a reboot
 └── README.md
-```
+🎯 Why I'm Doing This
 
-## Practical Investigations
+I'm not just reading about threats, I'm learning to think like both sides. The goal is to become the analyst who spots the strange process at 2 a.m. and knows exactly what it means.
 
-### Lab 1 – PowerShell Threat Hunting and Detection
-- Encoded PowerShell command investigation.
-- PowerShell download activity investigation.
-- Windows Security Event ID 4688 analysis.
-- PowerShell Operational Event ID 4104 analysis.
-- Downloaded file verification.
+Skills I'm sharpening: threat hunting · incident investigation · detection engineering · log analysis · Windows endpoint forensics
 
-### Lab 2 – Windows Persistence Mechanisms and Threat Hunting
-- Registry Run Keys investigation.
-- Scheduled Tasks investigation.
-- Windows Services investigation.
-- Persistence detection and analysis.
+⚠️ Fair Play
 
-*Lab 2 is currently in progress.*
+Everything here happens inside an isolated lab I own. No real systems were harmed or targeted. This is defensive learning only.
 
-## Investigation Methodology
-
-Each investigation follows a structured approach:
-
-1. Understand the attack technique.
-2. Generate controlled test activity.
-3. Collect endpoint and system telemetry.
-4. Investigate relevant security events.
-5. Identify suspicious behavior and validate findings.
-6. Develop detection logic.
-7. Document results and supporting evidence.
-
-## Disclaimer
-
-All activities in this repository are performed in a controlled lab environment for educational and defensive cybersecurity purposes. No unauthorized systems are targeted.
-
-## Goal
-
-To develop practical skills in SOC operations, Threat Hunting, Incident Response, and Detection Engineering through hands-on investigations and continuous learning.
-
+⭐ Follow along as the cases pile up. More hunts are on the way.
