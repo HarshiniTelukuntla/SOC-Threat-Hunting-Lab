@@ -1,7 +1,8 @@
-🕵️ SOC Threat Hunting Lab
-I break into my own Windows machine, then hunt myself down.
+🕵️** SOC Threat Hunting Lab**
 
-Every attack leaves footprints. This lab is my training ground for learning to read them.
+**I break into my own Windows machine, then hunt myself down.**
+
+|Every attack leaves footprints. This lab is my training ground for learning to read them.
 
 🎬 The Story
 
